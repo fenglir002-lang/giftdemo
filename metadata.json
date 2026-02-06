@@ -1,0 +1,5 @@
+{
+  "name": "GiftShare Admin",
+  "description": "B-side admin panel for managing gift incentives and cost sharing rules.",
+  "requestFramePermissions": []
+}
