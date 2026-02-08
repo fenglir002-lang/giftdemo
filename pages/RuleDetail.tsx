@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Plus, Trash2, AlertTriangle, 
@@ -70,8 +70,6 @@ export const RuleDetail: React.FC = () => {
 
   // UI State
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-  const [quotaError, setQuotaError] = useState(false); 
-  const monthlyQuotaRef = useRef<HTMLInputElement>(null);
 
   // Modal
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
@@ -206,10 +204,6 @@ export const RuleDetail: React.FC = () => {
       if (!prev) return null;
       return { ...prev, ...updates };
     });
-    // Auto-clear error if user fixes the quota
-    if (updates.monthlyQuota && updates.monthlyQuota > 0) {
-      setQuotaError(false);
-    }
   };
 
   // --- Logic ---
@@ -268,9 +262,6 @@ export const RuleDetail: React.FC = () => {
       if (item.subsidyType === SubsidyType.PERCENTAGE && (item.subsidyValue < 0 || item.subsidyValue > 100)) {
         return `${item.giftName} 补贴比例不合法`;
       }
-      if (typeof item.quota === 'number' && item.quota > rule.monthlyQuota) {
-        return `${item.giftName} 单品限额不能超过本月人均总限额`;
-      }
       const key = item.sku;
       if (!seen.has(key)) seen.set(key, new Set());
       const set = seen.get(key)!;
@@ -301,22 +292,7 @@ export const RuleDetail: React.FC = () => {
       // 0. Force a tiny delay to ensure React state updates are flushed if any
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // 1. Quota Validation
-      // Convert to number explicitly to avoid string issues
-      const quota = parseInt(String(rule.monthlyQuota), 10);
-      console.log("Check Quota:", quota);
-
-      if (isNaN(quota) || quota <= 0) {
-        showToast("⚠️ 校验失败：本月人均总限额必须大于 0", 'error');
-        setActiveTab(0);
-        setQuotaError(true);
-        // Focus input
-        setTimeout(() => monthlyQuotaRef.current?.focus(), 100);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 2. Gift Validation
+      // 1. Gift Validation
       const giftError = validateGiftConfig();
       if (giftError) {
         showToast(`⚠️ 校验失败：${giftError}`, 'error');
@@ -325,7 +301,7 @@ export const RuleDetail: React.FC = () => {
         return;
       }
 
-      // 3. Subsidy Validation
+      // 2. Subsidy Validation
       for (const item of rule.giftConfigs) {
         const subsidy = item.subsidyType === SubsidyType.FIXED 
            ? item.subsidyValue 
@@ -561,46 +537,18 @@ export const RuleDetail: React.FC = () => {
         {activeTab === 0 && (
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-4">
-                <div className={`p-3 rounded-lg flex items-center gap-3 border transition-all ${
-                  quotaError 
-                    ? 'bg-red-50 border-red-300 ring-4 ring-red-100' 
-                    : 'bg-slate-50 border-transparent focus-within:border-primary focus-within:bg-white focus-within:shadow-sm'
-                }`}>
-                  <span className={`text-sm font-medium ${quotaError ? 'text-red-700' : 'text-slate-500'}`}>
-                    本月人均总限额:
-                  </span>
-                  <input 
-                    ref={monthlyQuotaRef}
-                    type="number" 
-                    value={rule.monthlyQuota === 0 ? '' : rule.monthlyQuota} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const num = val === '' ? 0 : parseInt(val, 10);
-                      updateRule({ monthlyQuota: isNaN(num) ? 0 : num });
-                    }}
-                    placeholder="0"
-                    disabled={isTabLocked(0)}
-                    className="bg-transparent font-bold text-xl w-24 focus:outline-none border-b-2 border-slate-300 focus:border-primary text-center pb-1 placeholder-slate-300"
-                  />
-                  <span className="text-sm text-slate-400">份</span>
-                </div>
-                {quotaError && (
-                  <span className="text-sm text-red-600 flex items-center animate-pulse font-medium">
-                    <AlertTriangle className="w-4 h-4 mr-1" />
-                    请填写大于 0 的数值
-                  </span>
-                )}
+              <div className="text-sm text-slate-500">
+                每月仅可配置一个礼品，删除后可重新添加。
               </div>
-                  <button 
-                    onClick={() => setIsGiftModalOpen(true)}
-                    disabled={isTabLocked(0)}
-                    className="flex items-center px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-lg shadow-slate-200"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    添加礼品
-                  </button>
-                </div>
+              <button 
+                onClick={() => setIsGiftModalOpen(true)}
+                disabled={isTabLocked(0) || rule.giftConfigs.length >= 1}
+                className="flex items-center px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-lg shadow-slate-200"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {rule.giftConfigs.length >= 1 ? '已添加礼品' : '添加礼品'}
+              </button>
+            </div>
 
             {/* Gift Table */}
             <div className="overflow-x-auto overflow-y-visible border rounded-lg border-slate-200">

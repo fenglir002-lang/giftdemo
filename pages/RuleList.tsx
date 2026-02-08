@@ -177,7 +177,8 @@ export const RuleList: React.FC = () => {
   const handlePublishFromList = (id: string) => {
     const target = rules.find(r => r.id === id);
     if (!target) return;
-    if (target.monthlyQuota <= 0 || target.giftConfigs.length === 0) {
+    const firstQuota = target.giftConfigs[0]?.quota ?? 0;
+    if (target.giftConfigs.length === 0 || firstQuota <= 0) {
       showToast('请先完善规则配置后再上架', 'error');
       return;
     }
@@ -572,7 +573,7 @@ export const RuleList: React.FC = () => {
                         {rule.giftConfigs.length} SKU
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{rule.monthlyQuota}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{rule.giftConfigs[0]?.quota ?? '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${statusMeta.color}`}>
                         <span className="mr-1">{statusMeta.icon}</span>
